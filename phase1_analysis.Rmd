@@ -9,3 +9,20 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
+
+# import data
+
+```{r}
+data1 =
+  read_csv("~/Desktop/Pharm Stats/Lab Report 1/phase1_report/data/dta01.csv")
+```
+
+```{r}
+data2 =
+  read_csv("~/Desktop/Pharm Stats/Lab Report 1/phase1_report/data/dta02.csv")
+```
+
+
+
+
+
