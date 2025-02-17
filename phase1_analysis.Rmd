@@ -8,20 +8,48 @@ output: github_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(gtsummary)
 ```
 
 # import data
 
 ```{r}
-data1 =
+data_og =
   read_csv("~/Desktop/Pharm Stats/Lab Report 1/phase1_report/data/dta01.csv")
 ```
 
 ```{r}
-data2 =
-  read_csv("~/Desktop/Pharm Stats/Lab Report 1/phase1_report/data/dta02.csv")
+data_final =
+  read_csv("~/Desktop/Pharm Stats/Lab Report 1/phase1_report/data/dta02.csv") |> 
+  janitor::clean_names() |> 
+  mutate(as.numeric(cmax))
 ```
 
+# summary statistics by trt group
+
+**set geom mean function*
+```{r}
+geom_mean <- function(x) {
+  if (any(x <= 0, na.rm = TRUE)) return(NA)  
+  exp(mean(log(x), na.rm = TRUE))
+}
+```
+
+```{r}
+data_final |> 
+  select(drug, cmax, auct, aucinf) |> 
+  tbl_summary(
+    type = all_continuous() ~ "continuous2",
+    by = drug, 
+    statistic = list(
+      all_continuous() ~ c("{min}", "{max}", "{mean} ± {sd}", "CV: {sd}/{mean} * 100")
+    ),
+    digits = all_continuous() ~ 2
+  ) |> 
+  add_stat(fns = list(geometric_mean = ~geom_mean(.))) |> 
+  modify_header(label = "**Pharmacokinetic Parameters**") |> 
+  bold_labels()
+```
 
 
 
