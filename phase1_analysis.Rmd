@@ -14,43 +14,145 @@ library(gtsummary)
 # import data
 
 ```{r}
-data_og =
-  read_csv("~/Desktop/Pharm Stats/Lab Report 1/phase1_report/data/dta01.csv")
+data_clean =
+  read_csv("~/Desktop/Pharm Stats/Lab Report 1/phase1_report/data/dta02.csv") |> 
+  janitor::clean_names()
 ```
 
 ```{r}
-data_final =
-  read_csv("~/Desktop/Pharm Stats/Lab Report 1/phase1_report/data/dta02.csv") |> 
-  janitor::clean_names() |> 
-  mutate(as.numeric(cmax))
+test_drug <- data_clean |> 
+  filter(drug == 1)
 ```
+
+```{r}
+ref_drug <- data_clean |> 
+  filter(drug == 2)
+```
+
 
 # summary statistics by trt group
 
-**set geom mean function*
 ```{r}
-geom_mean <- function(x) {
-  if (any(x <= 0, na.rm = TRUE)) return(NA)  
-  exp(mean(log(x), na.rm = TRUE))
+geometric_mean <- function(x) {
+  exp(mean(log(x[x > 0]), na.rm = TRUE))
 }
 ```
 
+**for new treatment**
 ```{r}
-data_final |> 
-  select(drug, cmax, auct, aucinf) |> 
-  tbl_summary(
-    type = all_continuous() ~ "continuous2",
-    by = drug, 
-    statistic = list(
-      all_continuous() ~ c("{min}", "{max}", "{mean} ± {sd}", "CV: {sd}/{mean} * 100")
-    ),
-    digits = all_continuous() ~ 2
+summary_stats1 <- test_drug |> 
+  summarise(
+    cmax_min = min(cmax, na.rm = TRUE),
+    cmax_max = max(cmax, na.rm = TRUE),
+    cmax_mean = mean(cmax, na.rm = TRUE),
+    cmax_sd = sd(cmax, na.rm = TRUE),
+    cmax_cv = (sd(cmax, na.rm = TRUE) / mean(cmax, na.rm = TRUE)) * 100,
+    cmax_gmean = geometric_mean(cmax),
+    
+    auct_min = min(auct, na.rm = TRUE),
+    auct_max = max(auct, na.rm = TRUE),
+    auct_mean = mean(auct, na.rm = TRUE),
+    auct_sd = sd(auct, na.rm = TRUE),
+    auct_cv = (sd(auct, na.rm = TRUE) / mean(auct, na.rm = TRUE)) * 100,
+    auct_gmean = geometric_mean(auct),
+    
+    aucinf_min = min(aucinf, na.rm = TRUE),
+    aucinf_max = max(aucinf, na.rm = TRUE),
+    aucinf_mean = mean(aucinf, na.rm = TRUE),
+    aucinf_sd = sd(aucinf, na.rm = TRUE),
+    aucinf_cv = (sd(aucinf, na.rm = TRUE) / mean(aucinf, na.rm = TRUE)) * 100,
+    aucinf_gmean = geometric_mean(aucinf)
   ) |> 
-  add_stat(fns = list(geometric_mean = ~geom_mean(.))) |> 
-  modify_header(label = "**Pharmacokinetic Parameters**") |> 
-  bold_labels()
+  pivot_longer(cols = everything(), names_to = "stat", values_to = "value") |> 
+  separate(stat, into = c("variable", "statistic"), sep = "_") |> 
+  pivot_wider(names_from = "statistic", values_from = "value")
 ```
 
+```{r, treat = 1}
+summary_table1 <- summary_stats1 |> 
+  select(variable, min, max, mean, sd, cv, gmean) |> 
+  mutate(variable = case_when(
+    variable == "cmax" ~ "**Cmax** (ng/mL)",
+    variable == "auct" ~ "**AUCt** (ng·h/mL)",
+    variable == "aucinf" ~ "**AUCinf** (ng·h/mL)"
+  )) |> 
+  rename(
+    "Parameter" = variable,
+    "Min" = min,
+    "Max" = max,
+    "Mean" = mean,
+    "Std Dev" = sd,
+    "CV (%)" = cv,
+    "Geometric Mean" = gmean
+  ) |> 
+  gt() |> 
+  gt::tab_header(title = md("**Treatment Summary Statistics for Cmax, AUCt, and AUCinf**")) |> 
+  gt::fmt_number(columns = c("Min", "Max", "Mean", "Std Dev", "CV (%)", "Geometric Mean"), decimals = 2) |> 
+  gt::fmt_markdown(columns = "Parameter") |> 
+  gt::tab_style(
+    style = list(gt::cell_fill(color = "#F2F2F2")),  # Light grey
+    locations = gt::cells_body(rows = seq(1, nrow(summary_stats1), by = 2))
+  )
 
+summary_table1
+```
 
+**for reference treatment**
+```{r}
+summary_stats2 <- ref_drug |> 
+  summarise(
+    cmax_min = min(cmax, na.rm = TRUE),
+    cmax_max = max(cmax, na.rm = TRUE),
+    cmax_mean = mean(cmax, na.rm = TRUE),
+    cmax_sd = sd(cmax, na.rm = TRUE),
+    cmax_cv = (sd(cmax, na.rm = TRUE) / mean(cmax, na.rm = TRUE)) * 100,
+    cmax_gmean = geometric_mean(cmax),
+    
+    auct_min = min(auct, na.rm = TRUE),
+    auct_max = max(auct, na.rm = TRUE),
+    auct_mean = mean(auct, na.rm = TRUE),
+    auct_sd = sd(auct, na.rm = TRUE),
+    auct_cv = (sd(auct, na.rm = TRUE) / mean(auct, na.rm = TRUE)) * 100,
+    auct_gmean = geometric_mean(auct),
+    
+    aucinf_min = min(aucinf, na.rm = TRUE),
+    aucinf_max = max(aucinf, na.rm = TRUE),
+    aucinf_mean = mean(aucinf, na.rm = TRUE),
+    aucinf_sd = sd(aucinf, na.rm = TRUE),
+    aucinf_cv = (sd(aucinf, na.rm = TRUE) / mean(aucinf, na.rm = TRUE)) * 100,
+    aucinf_gmean = geometric_mean(aucinf)
+  ) |> 
+  pivot_longer(cols = everything(), names_to = "stat", values_to = "value") |> 
+  separate(stat, into = c("variable", "statistic"), sep = "_") |> 
+  pivot_wider(names_from = "statistic", values_from = "value")
+```
+
+```{r, treat = 2}
+summary_table2 <- summary_stats2 |> 
+  select(variable, min, max, mean, sd, cv, gmean) |> 
+  mutate(variable = case_when(
+    variable == "cmax" ~ "**Cmax** (ng/mL)",
+    variable == "auct" ~ "**AUCt** (ng·h/mL)",
+    variable == "aucinf" ~ "**AUCinf** (ng·h/mL)"
+  )) |> 
+  rename(
+    "Parameter" = variable,
+    "Min" = min,
+    "Max" = max,
+    "Mean" = mean,
+    "Std Dev" = sd,
+    "CV (%)" = cv,
+    "Geometric Mean" = gmean
+  ) |> 
+  gt() |> 
+  gt::tab_header(title = md("**Reference Summary Statistics for Cmax, AUCt, and AUCinf**")) |> 
+  gt::fmt_number(columns = c("Min", "Max", "Mean", "Std Dev", "CV (%)", "Geometric Mean"), decimals = 2) |> 
+  gt::fmt_markdown(columns = "Parameter") |> 
+  gt::tab_style(
+    style = list(gt::cell_fill(color = "#F2F2F2")),  # Light grey
+    locations = gt::cells_body(rows = seq(1, nrow(summary_stats1), by = 2))
+  )
+
+summary_table2
+```
 
