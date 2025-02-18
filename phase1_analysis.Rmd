@@ -9,6 +9,7 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(gtsummary)
+library(nlme)
 ```
 
 # import data
@@ -92,6 +93,9 @@ summary_table1 <- summary_stats1 |>
   gt::tab_style(
     style = list(gt::cell_fill(color = "#F2F2F2")),  # Light grey
     locations = gt::cells_body(rows = seq(1, nrow(summary_stats1), by = 2))
+  ) |> 
+  gt::opt_table_font(
+    font = list(gt::google_font(name = "Garamond"))
   )
 
 summary_table1
@@ -151,8 +155,108 @@ summary_table2 <- summary_stats2 |>
   gt::tab_style(
     style = list(gt::cell_fill(color = "#F2F2F2")),  # Light grey
     locations = gt::cells_body(rows = seq(1, nrow(summary_stats1), by = 2))
+  ) |> 
+  gt::opt_table_font(
+    font = list(gt::google_font(name = "Garamond"))
   )
 
 summary_table2
+```
+
+# conducting ANOVA
+```{r}
+data_clean$subj <- as.factor(data_clean$subj)
+data_clean$seq <- as.factor(data_clean$seq)
+data_clean$period <- as.factor(data_clean$period)
+data_clean$drug <- as.factor(data_clean$drug)
+
+model <- lme(cmax ~ seq + period + drug, 
+             random = ~1 | subj, 
+             data = data_clean)
+
+summary(model)
+
+anova(model)
+```
+
+**for cmax**
+```{r}
+result_cmax = lme(log(cmax) ~ seq + period + drug, random=~1|subj,data=data_clean) 
+summary(result_cmax) 
+VarCorr(result_cmax)              
+ci_cmax = intervals(result_cmax, 0.90)
+exp(ci_cmax$fixed["drug2",])
+```
+
+**for auct**
+```{r}
+result_auct = lme(log(auct) ~ seq + period + drug, random=~1|subj, data=data_clean)
+summary(result_auct)
+VarCorr(result_auct)
+ci_auct = intervals(result_auct, 0.90)
+exp(ci_auct$fixed["drug2",])
+```
+
+**for aucint**
+```{r}
+result_aucinf = lme(log(aucinf) ~ seq + period + drug, random=~1|subj, 
+                    data=data_clean, na.action = na.omit)
+summary(result_aucinf)
+VarCorr(result_aucinf)
+ci_aucinf = intervals(result_aucinf, 0.90)
+exp(ci_aucinf$fixed["drug2",])
+```
+
+**make table**
+```{r}
+result_cmax = lme(log(cmax) ~ seq + period + drug, random=~1|subj, data=data_clean)
+ci_cmax = intervals(result_cmax, level = 0.90)
+log_est_cmax <- summary(result_cmax)$tTable["drug2", "Value"]
+grm_cmax <- exp(log_est_cmax)  
+ci_cmax_values <- exp(ci_cmax$fixed["drug2", ])
+
+result_auct = lme(log(auct) ~ seq + period + drug, random=~1|subj, data=data_clean)
+ci_auct = intervals(result_auct, level = 0.90)
+log_est_auct <- summary(result_auct)$tTable["drug2", "Value"]
+grm_auct <- exp(log_est_auct)  
+ci_auct_values <- exp(ci_auct$fixed["drug2", ])
+
+result_aucinf = lme(log(aucinf) ~ seq + period + drug, random=~1|subj, 
+                    data=data_clean, na.action = na.omit)
+ci_aucinf = intervals(result_aucinf, level = 0.90)
+log_est_aucinf <- summary(result_aucinf)$tTable["drug2", "Value"]
+grm_aucinf <- exp(log_est_aucinf)  
+ci_aucinf_values <- exp(ci_aucinf$fixed["drug2", ])
+
+summary_table3 <- data.frame(
+  Parameter = c("Cmax", "AUCt", "AUCinf"),
+  Log_Estimate = c(log_est_cmax, log_est_auct, log_est_aucinf),
+  GRM_Ratio = c(grm_cmax, grm_auct, grm_aucinf),
+  CI_Lower_90 = c(ci_cmax_values[1], ci_auct_values[1], ci_aucinf_values[1]),
+  CI_Upper_90 = c(ci_cmax_values[2], ci_auct_values[2], ci_aucinf_values[2])
+) |>
+rename(
+    "Log Estimate" = Log_Estimate,
+    "GM Ratio" = GRM_Ratio,
+    "90% CI Lower" = CI_Lower_90,
+    "90% CI Upper" = CI_Upper_90,
+  )
+
+summary_table3 |> 
+  gt() |> 
+  gt::tab_header(title = md("**Geometric Mean Ratios Comparing Treatment to Reference**")) |> 
+  gt::fmt_number(columns = c("Log Estimate", "GM Ratio", "90% CI Lower", "90% CI Upper"), decimals = 2) |> 
+  gt::fmt_markdown(columns = "Parameter") |> 
+    gt::tab_style(
+    style = list(gt::cell_fill(color = "#F2F2F2")),  # Light grey
+    locations = gt::cells_body(rows = seq(1, nrow(summary_stats1), by = 2))
+  ) |> 
+  gt::opt_table_font(
+    font = list(gt::google_font(name = "Garamond"))
+  ) |> 
+  gt::tab_style(
+    style = list(gt::cell_text(weight = "bold")),
+    locations = gt::cells_body(columns = "Parameter")
+  )
 ```
 
