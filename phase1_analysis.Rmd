@@ -260,3 +260,56 @@ summary_table3 |>
   )
 ```
 
+# get ANOVA sum of squares
+```{r}
+# Extract sum of squares from the ANOVA summaries directly using column names
+ss_cmax_seq <- summary(anova_cmax)[[1]]$`Sum Sq`[1]  # seq
+ss_auct_seq <- summary(anova_auct)[[1]]$`Sum Sq`[1]  # seq
+ss_aucinf_seq <- summary(anova_aucinf)[[1]]$`Sum Sq`[1]  # seq
+
+ss_cmax_period <- summary(anova_cmax)[[1]]$`Sum Sq`[2]  # period
+ss_auct_period <- summary(anova_auct)[[1]]$`Sum Sq`[2]  # period
+ss_aucinf_period <- summary(anova_aucinf)[[1]]$`Sum Sq`[2]  # period
+
+ss_cmax_drug <- summary(anova_cmax)[[1]]$`Sum Sq`[3]  # drug
+ss_auct_drug <- summary(anova_auct)[[1]]$`Sum Sq`[3]  # drug
+ss_aucinf_drug <- summary(anova_aucinf)[[1]]$`Sum Sq`[3]  # drug
+
+ss_cmax_error <- summary(anova_cmax)[[1]]$`Sum Sq`[4]  # Residuals
+ss_auct_error <- summary(anova_auct)[[1]]$`Sum Sq`[4]  # Residuals
+ss_aucinf_error <- summary(anova_aucinf)[[1]]$`Sum Sq`[4]  # Residuals
+
+# Create the ANOVA table
+anova_table <- data.frame(
+  Parameter = c("Cmax", "AUCt", "AUCinf"),
+  "Sum of Squares (Seq)" = c(ss_cmax_seq, ss_auct_seq, ss_aucinf_seq),
+  "Sum of Squares (Period)" = c(ss_cmax_period, ss_auct_period, ss_aucinf_period),
+  "Sum of Squares (Drug)" = c(ss_cmax_drug, ss_auct_drug, ss_aucinf_drug),
+  "Sum of Squares (Error)" = c(ss_cmax_error, ss_auct_error, ss_aucinf_error)
+)
+
+colnames(anova_table) <- c("Parameter", 
+                           "Sum of Squares (Seq)", 
+                           "Sum of Squares (Period)", 
+                           "Sum of Squares (Drug)", 
+                           "Sum of Squares (Error)")
+
+# Print the table to check before rendering
+print(anova_table)
+
+# Render the table with robust handling
+anova_table |> 
+  gt() |> 
+  gt::tab_header(title = md("**ANOVA Sum of Squares for Cmax, AUCt, and AUCinf**")) |> 
+  gt::fmt_number(columns = c("Sum of Squares (Seq)", "Sum of Squares (Period)", 
+                             "Sum of Squares (Drug)", "Sum of Squares (Error)"), decimals = 2) |> 
+  gt::fmt_markdown(columns = "Parameter") |> 
+  gt::opt_table_font(
+    font = list(gt::google_font(name = "Garamond"))
+  ) |> 
+  gt::tab_style(
+    style = list(gt::cell_text(weight = "bold")),
+    locations = gt::cells_body(columns = "Parameter")
+  )
+```
+
